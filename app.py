@@ -210,7 +210,8 @@ def messages():
             receiver = int(request.form["receiver_id"])
         except (KeyError, ValueError):
             abort(400, "invalid receiver")
-        if sender == receiver or db().execute("SELECT 1 FROM blocks WHERE blocker_id=? AND blocked_id=?", (receiver, sender)).fetchone():
+        receiver_user = db().execute("SELECT blocked FROM users WHERE id=?", (receiver,)).fetchone()
+        if sender == receiver or not receiver_user or receiver_user["blocked"] or db().execute("SELECT 1 FROM blocks WHERE blocker_id=? AND blocked_id=?", (receiver, sender)).fetchone():
             abort(403, "message not permitted")
         try:
             db().execute("INSERT INTO messages(sender_id,receiver_id,product_id,body) VALUES(?,?,?,?)", (sender, receiver, request.form.get("product_id") or None, request.form.get("body", "").strip()))
