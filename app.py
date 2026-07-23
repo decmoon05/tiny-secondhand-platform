@@ -8,6 +8,7 @@ import sqlite3
 from functools import wraps
 from pathlib import Path
 
+import click
 from flask import Flask, abort, g, jsonify, redirect, render_template_string, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -107,6 +108,23 @@ def page(title: str, body: str, **context: object) -> str:
 def setup() -> None:
     init_db()
     session.setdefault("csrf", secrets.token_urlsafe(24))
+
+
+@app.cli.command("create-admin")
+@click.option("--username", prompt=True)
+@click.password_option()
+def create_admin(username: str, password: str) -> None:
+    """Create or promote a local administrator account."""
+    if not (3 <= len(username.strip()) <= 30 and len(password) >= 12):
+        raise click.UsageError("username: 3-30 chars; password: at least 12 chars")
+    init_db()
+    existing = db().execute("SELECT id FROM users WHERE username=?", (username.strip(),)).fetchone()
+    if existing:
+        db().execute("UPDATE users SET is_admin=1, blocked=0 WHERE id=?", (existing["id"],))
+    else:
+        db().execute("INSERT INTO users(username,password_hash,is_admin) VALUES(?,?,1)", (username.strip(), generate_password_hash(password)))
+    db().commit()
+    click.echo("Administrator account is ready.")
 
 
 @app.route("/")
@@ -223,6 +241,18 @@ def transfer():
             db().execute("INSERT INTO transfers(sender_id,receiver_id,product_id,amount) VALUES(?,?,?,?)", (sender, receiver, request.form.get("product_id") or None, amount))
         return redirect(url_for("index"))
     return page("Transfer", "<form method=post><input type=hidden name=csrf value='{{csrf}}'><input name=receiver_id type=number placeholder='Recipient user ID' required><input name=product_id type=number placeholder='Product ID (optional)'><input name=amount type=number min=1 placeholder='Amount' required><button>Transfer</button></form>")
+
+
+@app.route("/admin")
+@admin_required
+def admin_dashboard():
+    users = db().execute("SELECT id,username,is_admin,blocked,balance FROM users ORDER BY id").fetchall()
+    products = db().execute("SELECT p.id,p.title,p.price,p.blocked,u.username FROM products p JOIN users u ON u.id=p.seller_id ORDER BY p.id DESC").fetchall()
+    body = """<h2>User management</h2>{% for item in users %}<article>#{{item.id}} {{item.username}} | admin={{item.is_admin}} | blocked={{item.blocked}} | balance={{item.balance}}
+    {% if not item.blocked and item.id != user.id %}<form method=post action='/admin/block/user/{{item.id}}'><input type=hidden name=csrf value='{{csrf}}'><button>Block user</button></form>{% endif %}</article>{% endfor %}
+    <h2>Product management</h2>{% for item in products %}<article>#{{item.id}} {{item.title}} | seller={{item.username}} | {{item.price}} KRW | blocked={{item.blocked}}
+    {% if not item.blocked %}<form method=post action='/admin/block/product/{{item.id}}'><input type=hidden name=csrf value='{{csrf}}'><button>Block product</button></form>{% endif %}</article>{% else %}<p>No products.</p>{% endfor %}"""
+    return page("Administration", body, users=users, products=products)
 
 
 @app.route("/admin/block/user/<int:user_id>", methods=["POST"])

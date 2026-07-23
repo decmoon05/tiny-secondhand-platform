@@ -17,3 +17,4 @@ Smoke test performed on 2026-07-23:
 2. Logged in as seller and listed a product.
 3. Logged in as buyer, confirmed that product search shows the listing, and transferred 1,000 KRW.
 4. Submitted a transfer with an invalid CSRF token and confirmed HTTP 400.
+5. Created an administrator with the Flask CLI and confirmed that the administration page and block actions require an administrator session and CSRF token.

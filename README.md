@@ -14,6 +14,14 @@ python app.py
 
 Open `http://127.0.0.1:5000`. Every new account starts as a normal user with a virtual balance of 100,000 KRW.
 
+Create a local administrator account when testing moderation:
+
+```powershell
+flask --app app create-admin --username admin
+```
+
+After logging in as that account, open `http://127.0.0.1:5000/admin`.
+
 ## Features
 
 - Account registration and login
