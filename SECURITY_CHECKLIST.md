@@ -11,7 +11,7 @@
 | Business logic | Positive amounts, balance test, database transaction | A transfer cannot overdraw the sender and debit/credit execute in one transaction. |
 | Abuse response | User/product blocking | Blocked users/products are hidden, blocked accounts cannot use protected features, and blocked receivers cannot be messaged. |
 
-Smoke test performed on 2026-07-23:
+Adversarial regression test performed on 2026-07-24:
 
 1. Registered seller and buyer accounts.
 2. Logged in as seller and listed a product.
@@ -19,3 +19,4 @@ Smoke test performed on 2026-07-23:
 4. Submitted a transfer with an invalid CSRF token and confirmed HTTP 400.
 5. Created an administrator with the Flask CLI and confirmed that the administration page and block actions require an administrator session and CSRF token.
 6. Confirmed that a message to a blocked recipient is rejected with HTTP 403.
+7. Confirmed that the administrator dashboard displays recent message and transfer audit records, and that block/unblock actions require an administrator session and CSRF token.
