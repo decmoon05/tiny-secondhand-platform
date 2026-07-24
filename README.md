@@ -28,7 +28,7 @@ After logging in as that account, open `http://127.0.0.1:5000/admin`.
 - Product listing, searching, and detail pages
 - Seller messaging with a receiver block check
 - Atomic virtual-balance transfer
-- Administrator-only APIs for blocking a user or a product
+- Administrator audit dashboard for user/product moderation, recent messages, and transfer records
 
 ## Security controls
 

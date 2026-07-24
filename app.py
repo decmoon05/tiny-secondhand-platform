@@ -249,11 +249,15 @@ def transfer():
 def admin_dashboard():
     users = db().execute("SELECT id,username,is_admin,blocked,balance FROM users ORDER BY id").fetchall()
     products = db().execute("SELECT p.id,p.title,p.price,p.blocked,u.username FROM products p JOIN users u ON u.id=p.seller_id ORDER BY p.id DESC").fetchall()
+    messages = db().execute("SELECT m.id,s.username sender,r.username receiver,m.body,m.created_at FROM messages m JOIN users s ON s.id=m.sender_id JOIN users r ON r.id=m.receiver_id ORDER BY m.id DESC LIMIT 50").fetchall()
+    transfers = db().execute("SELECT t.id,s.username sender,r.username receiver,t.amount,t.created_at FROM transfers t JOIN users s ON s.id=t.sender_id JOIN users r ON r.id=t.receiver_id ORDER BY t.id DESC LIMIT 50").fetchall()
     body = """<h2>User management</h2>{% for item in users %}<article>#{{item.id}} {{item.username}} | admin={{item.is_admin}} | blocked={{item.blocked}} | balance={{item.balance}}
-    {% if not item.blocked and item.id != user.id %}<form method=post action='/admin/block/user/{{item.id}}'><input type=hidden name=csrf value='{{csrf}}'><button>Block user</button></form>{% endif %}</article>{% endfor %}
+    {% if item.id != user.id %}<form method=post action='/admin/{% if item.blocked %}unblock{% else %}block{% endif %}/user/{{item.id}}'><input type=hidden name=csrf value='{{csrf}}'><button>{% if item.blocked %}Unblock{% else %}Block{% endif %} user</button></form>{% endif %}</article>{% endfor %}
     <h2>Product management</h2>{% for item in products %}<article>#{{item.id}} {{item.title}} | seller={{item.username}} | {{item.price}} KRW | blocked={{item.blocked}}
-    {% if not item.blocked %}<form method=post action='/admin/block/product/{{item.id}}'><input type=hidden name=csrf value='{{csrf}}'><button>Block product</button></form>{% endif %}</article>{% else %}<p>No products.</p>{% endfor %}"""
-    return page("Administration", body, users=users, products=products)
+    <form method=post action='/admin/{% if item.blocked %}unblock{% else %}block{% endif %}/product/{{item.id}}'><input type=hidden name=csrf value='{{csrf}}'><button>{% if item.blocked %}Unblock{% else %}Block{% endif %} product</button></form></article>{% else %}<p>No products.</p>{% endfor %}
+    <h2>Recent message audit</h2>{% for item in messages %}<article>#{{item.id}} {{item.sender}} to {{item.receiver}}: {{item.body}} ({{item.created_at}})</article>{% else %}<p>No messages.</p>{% endfor %}
+    <h2>Recent transfer audit</h2>{% for item in transfers %}<article>#{{item.id}} {{item.sender}} to {{item.receiver}}: {{item.amount}} KRW ({{item.created_at}})</article>{% else %}<p>No transfers.</p>{% endfor %}"""
+    return page("Administration", body, users=users, products=products, messages=messages, transfers=transfers)
 
 
 @app.route("/admin/block/user/<int:user_id>", methods=["POST"])
@@ -265,11 +269,29 @@ def block_user(user_id: int):
     return jsonify(ok=True)
 
 
+@app.route("/admin/unblock/user/<int:user_id>", methods=["POST"])
+@admin_required
+def unblock_user(user_id: int):
+    validate_csrf()
+    db().execute("UPDATE users SET blocked=0 WHERE id=?", (user_id,))
+    db().commit()
+    return jsonify(ok=True)
+
+
 @app.route("/admin/block/product/<int:product_id>", methods=["POST"])
 @admin_required
 def block_product(product_id: int):
     validate_csrf()
     db().execute("UPDATE products SET blocked=1 WHERE id=?", (product_id,))
+    db().commit()
+    return jsonify(ok=True)
+
+
+@app.route("/admin/unblock/product/<int:product_id>", methods=["POST"])
+@admin_required
+def unblock_product(product_id: int):
+    validate_csrf()
+    db().execute("UPDATE products SET blocked=0 WHERE id=?", (product_id,))
     db().commit()
     return jsonify(ok=True)
 
